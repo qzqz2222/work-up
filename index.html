@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拒绝网络沉迷 · 健康上网大闯关（修正版）</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"微软雅黑",sans-serif}
+body{background:linear-gradient(135deg,#e8f4f8,#d1e7dd);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+.game-title{font-size:28px;color:#2c5f2d;margin:10px 0}
+.tip-text{margin-bottom:15px;color:#444}
+.info-bar{width:100%;max-width:600px;display:flex;justify-content:space-between;background:#fff;padding:12px 20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:20px}
+#game-box{width:100%;max-width:600px;height:450px;background:#fff;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,.15);position:relative;overflow:hidden}
+.item{position:absolute;width:60px;height:60px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;user-select:none}
+.addict{background:#ffcccc;border:2px solid #f87171}
+.healthy{background:#dcfce7;border:2px solid #22c55e}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:999}
+.modal-content{background:#fff;padding:30px;border-radius:15px;text-align:center;width:90%;max-width:420px}
+.btn{padding:10px 25px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;margin:5px}
+@keyframes pop{0%{transform:scale(1);opacity:1}100%{transform:scale(1.8);opacity:0}}
+.pop{animation:pop .3s forwards}
+</style>
+</head>
+<body>
+<h1 class="game-title">拒绝网络沉迷 健康上网大闯关</h1>
+<p class="tip-text">点击红色沉迷图标消除，收集绿色健康道具，守护健康生活！</p>
+
+<div class="info-bar">
+<div>关卡：<span id="level">1</span>/3</div>
+<div>健康值：<span id="score">0</span></div>
+<div>剩余时间：<span id="time">30</span>s</div>
+</div>
+
+<div id="game-box"></div>
+
+<div class="modal" id="startModal" style="display:flex;">
+<div class="modal-content">
+<h2>游戏规则</h2>
+<p>🔴点击红色图标消除沉迷行为<br>🟢点击绿色图标获得更多健康值<br>⏱每关30秒，达成目标即可通关</p>
+<button class="btn" onclick="startGame()">开始游戏</button>
+</div>
+</div>
+
+<div class="modal" id="winModal">
+<div class="modal-content">
+<h2 id="winTitle"></h2>
+<p id="winText"></p>
+<button class="btn" onclick="nextLevel()">下一关</button>
+</div>
+</div>
+
+<div class="modal" id="loseModal">
+<div class="modal-content">
+<h2>挑战失败</h2>
+<p>时间耗尽，请合理安排上网时间。</p>
+<button class="btn" onclick="restartGame()">重新开始</button>
+</div>
+</div>
+
+<div class="modal" id="finalModal">
+<div class="modal-content">
+<h2>🎉 全部通关</h2>
+<p style="font-size:22px;color:#16a34a;font-weight:bold">
+拒绝网络沉迷<br>健康合理上网
+</p>
+<p>适度游戏益脑，沉迷游戏伤身。<br>科学用网、文明上网，让网络成为成长的助手。</p>
+<button class="btn" onclick="restartGame()">重新开始</button>
+</div>
+</div>
+
+<script>
+let level=1,score=0,time=30,timer=null,spawnTimer=null,gameRunning=false;
+const targetScore=[15,25,35];
+const addictIcons=['📱','🎮','💻','🕹️'];
+const healthyIcons=['🏃','📚','🏀','🎨','💤'];
+
+const gameBox=document.getElementById('game-box');
+const levelDom=document.getElementById('level');
+const scoreDom=document.getElementById('score');
+const timeDom=document.getElementById('time');
+
+function startGame(){
+document.getElementById('startModal').style.display='none';
+gameRunning=true;
+resetLevel();
+createItems();
+spawnTimer=setInterval(createItems,3000);
+startTimer();
+}
+
+function resetLevel(){
+time=30;
+timeDom.innerText=time;
+gameBox.innerHTML='';
+}
+
+function getRandomPosition(){
+let x,y,ok=false;
+while(!ok){
+ok=true;
+x=Math.random()*(gameBox.offsetWidth-60);
+y=Math.random()*(gameBox.offsetHeight-60);
+document.querySelectorAll('.item').forEach(el=>{
+let ex=parseInt(el.style.left)||0;
+let ey=parseInt(el.style.top)||0;
+if(Math.abs(x-ex)<70 && Math.abs(y-ey)<70) ok=false;
+});
+}
+return {x,y};
+}
+
+function createItems(){
+if(!gameRunning)return;
+const itemCount=5+level;
+for(let i=0;i<itemCount;i++){
+const item=document.createElement('div');
+item.className='item';
+const addict=Math.random()>0.4;
+if(addict){
+item.classList.add('addict');
+item.innerText=addictIcons[Math.floor(Math.random()*addictIcons.length)];
+item.onclick=()=>hit(item,2);
+}else{
+item.classList.add('healthy');
+item.innerText=healthyIcons[Math.floor(Math.random()*healthyIcons.length)];
+item.onclick=()=>hit(item,3);
+}
+const p=getRandomPosition();
+item.style.left=p.x+'px';
+item.style.top=p.y+'px';
+gameBox.appendChild(item);
+setTimeout(()=>{if(item.parentNode)item.remove()},5000);
+}
+}
+
+function hit(item,add){
+score+=add;
+scoreDom.innerText=score;
+item.classList.add('pop');
+setTimeout(()=>item.remove(),300);
+if(score>=targetScore[level-1]) gameWin();
+}
+
+function startTimer(){
+clearInterval(timer);
+timer=setInterval(()=>{
+time--;
+timeDom.innerText=time;
+if(time<=0){clearInterval(timer);gameLose();}
+},1000);
+}
+
+function gameWin(){
+if(!gameRunning)return;
+gameRunning=false;
+clearInterval(timer);
+clearInterval(spawnTimer);
+document.getElementById('winTitle').innerText='第'+level+'关通关';
+document.getElementById('winText').innerHTML='合理上网，健康成长！';
+document.getElementById('winModal').style.display='flex';
+}
+
+function gameLose(){
+gameRunning=false;
+clearInterval(spawnTimer);
+document.getElementById('loseModal').style.display='flex';
+}
+
+function nextLevel(){
+document.getElementById('winModal').style.display='none';
+if(level<3){
+level++;
+score=0;
+levelDom.innerText=level;
+scoreDom.innerText=score;
+gameRunning=true;
+resetLevel();
+createItems();
+spawnTimer=setInterval(createItems,3000);
+startTimer();
+}else{
+document.getElementById('finalModal').style.display='flex';
+}
+}
+
+function restartGame(){
+['winModal','loseModal','finalModal'].forEach(id=>document.getElementById(id).style.display='none');
+document.getElementById('startModal').style.display='flex';
+clearInterval(timer);
+clearInterval(spawnTimer);
+level=1;score=0;
+levelDom.innerText=1;
+scoreDom.innerText=0;
+timeDom.innerText=30;
+gameBox.innerHTML='';
+gameRunning=false;
+}
+</script>
+</body>
+</html>
